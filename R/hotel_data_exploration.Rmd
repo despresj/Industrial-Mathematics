@@ -51,3 +51,8 @@ hotel %>%
 city increase in capacity is consistent with lisbon's tourist boom. 
 
 
+```{r}
+hotel %>% 
+write_csv(here::here("data", "hotel.csv"))
+```
+
