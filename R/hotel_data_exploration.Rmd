@@ -41,7 +41,7 @@ hotel %>%
   group_by(hotel) %>% 
   summarise(date, occupancy = cumsum(delta_occupancy), delta_occupancy) %>% 
   ggplot(aes(x = date, y = occupancy)) + 
-  geom_line() + 
+  geom_line() +
   facet_wrap(~hotel)
 
          
