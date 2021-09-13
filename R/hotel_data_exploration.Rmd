@@ -1,0 +1,53 @@
+---
+title: "hotel data exploration"
+author: "Joe Despres"
+date: "9/13/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+hotel <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv') %>% 
+    mutate(
+    reservation_date = ymd(paste(arrival_date_year, arrival_date_month,
+                                      arrival_date_day_of_month)),
+         stay_length = stays_in_week_nights + stays_in_weekend_nights,
+         check_out_date = if_else(reservation_status != "No-Show",
+                                  reservation_date + days(stay_length), ymd("NA"))) 
+
+```
+
+```{r}
+hotel %>% 
+  group_by(reservation_status_date, hotel) %>% 
+  summarise(n = n()) %>%
+  ggplot(aes(x = reservation_status_date , y = n )) +
+  geom_line() + facet_wrap(~hotel)
+```
+
+```{r}
+hotel %>%  
+  select(hotel, reservation_date, check_out_date, stay_length, adults) %>% 
+  pivot_longer(cols = c(reservation_date, check_out_date), names_to = "res", values_to = "date") %>% 
+  arrange(date) %>% 
+  mutate(people = if_else(res == "reservation_date", adults, adults * -1)) %>% 
+  group_by(hotel, date) %>% 
+  summarise(delta_occupancy = sum(people)) %>% 
+  group_by(hotel) %>% 
+  summarise(date, occupancy = cumsum(delta_occupancy), delta_occupancy) %>% 
+  ggplot(aes(x = date, y = occupancy)) + 
+  geom_line() + 
+  facet_wrap(~hotel)
+
+         
+        
+```
+
+city increase in capacity is consistent with lisbon's tourist boom. 
+
+
