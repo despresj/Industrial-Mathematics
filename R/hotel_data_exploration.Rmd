@@ -54,7 +54,7 @@ hotel %>%
          reservation_status == "Canceled") %>% 
   group_by(reservation_date) %>% 
   count() %>% 
-  ungroup() %>% 
+  ungroup() %>% git
   summarise(mean(n), var(n))
 ```
 
