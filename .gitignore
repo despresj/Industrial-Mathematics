@@ -1,5 +1,8 @@
 .Rproj.user
 .Rhistory
 .RData
+.DS_Store
+report/~$report.docx
 .Ruserdata
 Industrial-Mathematics.Rproj
+.gitignore

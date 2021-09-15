@@ -54,7 +54,7 @@ hotel %>%
          reservation_status == "Canceled") %>% 
   group_by(reservation_date) %>% 
   count() %>% 
-  ungroup() %>% git
+  ungroup() %>%
   summarise(mean(n), var(n))
 ```
 
@@ -86,6 +86,11 @@ hotel %>%
 ```
 
 city increase in capacity is consistent with lisbon's tourist boom. 
+
+
+```{r}
+hotel
+```
 
 
 ```{r}
