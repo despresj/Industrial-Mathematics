@@ -12,10 +12,11 @@ binocdf(r, B, p, 'upper'); % probs B > r
 
 bookings = zeros(100, 1); 
 
+loss = 6;
 for r = 900:1000   % rooms 1:1000
     for B = r:10000 % bookings rooms < bookings through 1000
-        phi = binocdf(r, B + 1, p) - 4*binocdf(r, B+1, p, 'upper');
-        rho = binocdf(r, B, p) - 4*binocdf(r, B, p, 'upper');
+        phi = binocdf(r, B + 1, p) - loss*binocdf(r, B+2, p, 'upper');
+        rho = binocdf(r, B, p) - loss*binocdf(r, B, p, 'upper');
             % P(bookings <= rooms) - 4*P(bookings > rooms)
         if phi - rho < 0 % stop when neg
             break  % end
