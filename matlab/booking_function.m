@@ -7,7 +7,7 @@ function max_booking = booking_optimize(rooms, p, loss)
     filled_m1 = 0;
     over_m1 = 0;
     bookings = rooms;
-    while E_m1+1 >= E
+    while E_m1 >= E
         
         E = sum(filled_m1) - loss * sum(over_m1);
         filled_m1 = bookings * binopdf(1:rooms, bookings, p);
