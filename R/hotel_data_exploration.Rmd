@@ -22,6 +22,10 @@ hotel <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidy
 ```
 
 ```{r}
+glimpse(hotel)
+```
+
+```{r}
 hotel %>%
   count(reservation_status)
 ```
@@ -94,7 +98,6 @@ hotel
 
 
 ```{r}
-hotel %>% 
-write_csv(here::here("data", "hotel.csv"))
+
 ```
 
