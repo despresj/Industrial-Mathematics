@@ -1,0 +1,71 @@
+---
+title: "logistic_reg_rest"
+author: "Joe Despres"
+date: "9/18/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidymodels)
+hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv') %>% 
+    mutate(
+    reservation_date = ymd(paste(arrival_date_year, arrival_date_month,
+                                      arrival_date_day_of_month)),
+         stay_length = stays_in_week_nights + stays_in_weekend_nights,
+         check_out_date = if_else(reservation_status != "No-Show",
+                                  reservation_date + days(stay_length), ymd("NA"))) %>% 
+  filter(adults < 5,
+         children < 4,
+         babies < 9)
+```
+
+```{r}
+hotel %>%
+write_csv(here::here("data", "hotel_preped.csv"))
+```
+
+
+```{r}
+hotels %>%
+  count(is_canceled, reservation_status)
+```
+```{r}
+count(hotels, adults)
+count(hotels, children)
+count(hotels, babies)
+
+```
+
+```{r}
+hotels %>%
+  select(-county,)
+glimpse()
+```
+
+
+
+```{r}
+logistic_fit <- glm(is_canceled ~ Predictors, data = hotels,
+                      family = binomial(link = logit))
+logistic_fit
+```
+
+```{r}
+logistic_fit %>% 
+  tidy(conf.int = TRUE) %>% 
+  mutate(`exp(estimate)` = exp(estimate)) %>% 
+  relocate(`exp(estimate)`, .after = estimate)
+
+predict.glm(logistic_fit, data.frame(Predictors = ), type = "response")
+plot(y ~ x, data, xlim=c(0,999), ylim = c(0,1))
+lines(seq(0,999,1),ilogit())
+```
+
+
+
