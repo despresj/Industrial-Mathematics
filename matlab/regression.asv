@@ -8,14 +8,12 @@ y = categorical(y);
 [B,dev,stats] = mnrfit(X, y);
 p_q = mnrval(B, X);
 phat_vec = p_q(:, 1);
-phat_vec;
+phat_vec
 
 capacity_vec = zeros(1, length(phat_vec));
 
 for i = 1:length(phat_vec)
     phat_i = phat_vec(i); 
-    frac_of_capacity = capacity_frac(phat_i, 1000, 4);
-    capacity_vec(i) = frac_of_capacity;
+    frac_of_capacity = capacity_frac(phat_i, 1000, 4)
+    frac_of_capacity =
 end
-
-capacity_vec

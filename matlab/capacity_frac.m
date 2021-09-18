@@ -1,6 +1,4 @@
-booking_optimize(1000, 0.64, 4)
-
-function max_booking = booking_optimize(rooms, p, loss)
+function frac_of_capacity = capacity_frac(p, rooms, loss)
 
     E = 0;
     E_m1 = 0;
@@ -17,5 +15,5 @@ function max_booking = booking_optimize(rooms, p, loss)
         bookings = bookings + 1;
 
     end
-    bookings
+    frac_of_capacity = bookings
 end
