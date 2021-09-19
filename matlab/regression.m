@@ -14,8 +14,8 @@ capacity_vec = zeros(1, length(phat_vec));
 
 for i = 1:length(phat_vec)
     phat_i = phat_vec(i); 
-    frac_of_capacity = capacity_frac(phat_i, 1000, 4);
-    capacity_vec(i) = frac_of_capacity;
+    capacity_frac(phat_i, 1000, 4)
+    capacity_determinator(phat_i, 1000, 4)
 end
 
 capacity_vec
