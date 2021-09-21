@@ -1,19 +1,15 @@
 function frac_of_capacity = capacity_frac(p, rooms, loss)
 
-    E = 0;
-    E_m1 = 0;
-    filled_m1 = 0;
-    over_m1 = 0;
-    bookings = rooms;
+    [E, E_m1, Fx, P_overbook, bookings] = deal(0, 0, 0, 0, rooms);
+
     while E_m1 >= E
+        E = bookings * Fx - loss * bookings * P_overbook;
         
-        E = sum(filled_m1) - loss * sum(over_m1);
-        filled_m1 = bookings * binopdf(1:rooms, bookings, p);
-        over_m1 = bookings * binopdf(rooms+1:bookings, bookings, p);
-        E_m1 = sum(filled_m1) - loss * sum(over_m1);
+        Fx = binocdf(rooms, bookings, p);
+        P_overbook = 1 - Fx;
+        E_m1 = bookings * Fx - loss * bookings * P_overbook;
 
         bookings = bookings + 1;
-
     end
-    frac_of_capacity = bookings
+    frac_of_capacity = bookings;
 end
