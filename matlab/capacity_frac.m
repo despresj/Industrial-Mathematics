@@ -15,5 +15,5 @@ function frac_of_capacity = capacity_frac(p, rooms, loss)
         bookings = bookings + 1;
 
     end
-    frac_of_capacity = bookings
+    frac_of_capacity = bookings;
 end
