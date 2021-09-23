@@ -1,0 +1,37 @@
+---
+title: "Untitled"
+author: "Joe Despres"
+date: "9/23/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+in the document. You can embed an R code chunk like this:
+
+```{r results='asis'}
+library(kableExtra)
+
+a <- tibble::tribble(
+      ~Variable,         ~Type,                                          ~Description,
+  "is_canceled", "Categorical", "Indicates if the reservation cancels their booking."
+  )
+
+kbl(a, booktabs = T) %>%
+kable_styling("striped", full_width = F)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

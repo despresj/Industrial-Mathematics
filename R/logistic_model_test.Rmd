@@ -12,7 +12,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+tibble::tribble(
+   ~A,  ~B,  ~c,
+  "A", "B", "c",
+  "b",  NA,  NA,
+   NA,  NA,  NA
+  )
+
+```
+
+
+```{r}
 library(tidymodels)
+library(lubridate)
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv') %>% 
     mutate(
     reservation_date = ymd(paste(arrival_date_year, arrival_date_month,
@@ -22,43 +34,44 @@ hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
                                   reservation_date + days(stay_length), ymd("NA"))) %>% 
   filter(adults < 5,
          children < 4,
-         babies < 9)
+         babies < 9) %>% 
+  mutate(across(c(arrival_date_month, deposit_type, adults:babies), as.factor))
 ```
+```{r}
+hotels %>% 
+  select(is_canceled, lead_time, arrival_date_month, stays_in_weekend_nights, stays_in_week_nights, adults, children,
+                    babies, market_segment, distribution_channel, is_repeated_guest,
+                     previous_cancellations, previous_bookings_not_canceled, deposit_type)
+```
+
 
 ```{r}
 hotel %>%
 write_csv(here::here("data", "hotel_preped.csv"))
+beepr::beep()
 ```
 
 
 ```{r}
-hotels %>%
-  count(is_canceled, reservation_status)
-```
-```{r}
-count(hotels, adults)
-count(hotels, children)
-count(hotels, babies)
-
-```
-
-```{r}
-hotels %>%
-  select(-county,)
-glimpse()
-```
-
-
-
-```{r}
-logistic_fit <- glm(is_canceled ~ Predictors, data = hotels,
+logistic_fit <- glm(is_canceled ~ hotel + lead_time + arrival_date_month + 
+                    stays_in_weekend_nights + stays_in_week_nights + adults + children +
+                    babies + market_segment + distribution_channel + is_repeated_guest +
+                     previous_cancellations + previous_bookings_not_canceled + deposit_type, 
+                    data = hotels,
                       family = binomial(link = logit))
-logistic_fit
+logistic_fit %>% 
+  tidy() %>% 
+  arrange(desc(p.value))
+
+options(scipen = 1100000)
+```
+```{r}
+
 ```
 
 ```{r}
 logistic_fit %>% 
-  tidy(conf.int = TRUE) %>% 
+  tidy() %>% 
   mutate(`exp(estimate)` = exp(estimate)) %>% 
   relocate(`exp(estimate)`, .after = estimate)
 
