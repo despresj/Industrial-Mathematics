@@ -65,9 +65,7 @@ logistic_fit %>%
 
 options(scipen = 1100000)
 ```
-```{r}
 
-```
 
 ```{r}
 logistic_fit %>% 

@@ -13,5 +13,6 @@ phat_vec;
 capacity_vec = zeros(1, length(phat_vec));
 
 for i = 1:length(phat_vec)
-   capacity_vec(i) = capacity_frac(phat_vec(i), 1000, 4);
+    probs = capacity_frac(phat_vec(i), 1000, 4)
+   capacity_vec(i) = probs;
 end

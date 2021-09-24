@@ -11,15 +11,24 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-in the document. You can embed an R code chunk like this:
+here is our cool documnet
 
 ```{r results='asis'}
 library(kableExtra)
 
-a <- tibble::tribble(
-      ~Variable,         ~Type,                                          ~Description,
-  "is_canceled", "Categorical", "Indicates if the reservation cancels their booking."
-  )
+a <- 
+    tibble::tribble(
+                     ~Variable,         ~Type,                                                  ~Description,
+                 "is_canceled", "Categorical",         "Indicates if the reservation cancels their booking.",
+                   "lead_time",     "Numeric",                   "The number of days until the reservation.",
+               "arrival_month",  "Categorial",                                   "The month of the booking.",
+                 "stay_length",     "Numeric",                         "Length of stay the guest schedules.",
+           "is_repeated_guest", "Categorical",   "Informs if the guest has stayed at the hotel in the past.",
+      "previous_cancellations",     "Numeric",            "Number of times guest has cncelled reservations.",
+                "deposit_type", "Categorical", "Indicates if a customer made a deposit to reserve the room.",
+                      "adults",     "Numeric",                        "Number of adults on the reservation."
+      )
+
 
 kbl(a, booktabs = T) %>%
 kable_styling("striped", full_width = F)
