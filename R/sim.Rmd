@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidymodels)
 library(lubridate)
+library(tictoc)
 source(here::here("R", "capacity_frac.R"))
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
 ```
@@ -46,7 +47,7 @@ hotels %>%
   ggplot(aes(x = check_in_date, y = n, color = hotel)) + 
   geom_line() + 
   facet_wrap(~hotel, nrow = 2)
-hotels
+
 ```
 
 ```{r}
@@ -64,7 +65,6 @@ train <- city_hotel %>%
   filter(!check_in_date %in% training_dates)
 test <- city_hotel %>% 
   filter(check_in_date %in% training_dates)
-
 ```
 
 ```{r}
@@ -77,6 +77,53 @@ logistic_fit <- glm(is_canceled ~ customer_type +
                       deposit_type, data = train,
                       family = binomial(link = logit))
 ```
+
+```{r}
+capacity_frac <- function (p, rooms=100, loss=4, min_p=0.3) {
+E <- 0; E_m1 <- 0; Fx <- 0;
+P_overbook <- 0; bookings <- rooms;
+
+  if(p > min_p) {
+    while(E_m1 >= E) {
+      E <-  bookings * Fx - (bookings - loss) * bookings * P_overbook
+      Fx <-  pbinom(rooms, bookings, p, lower.tail = TRUE)
+      P_overbook <-  1 - Fx
+      bookings <-  bookings + 1
+      E_m1 <-  bookings * Fx - (bookings - loss) * bookings * P_overbook
+      }
+  }
+  else {
+    bookings = rooms * 3
+  }
+  return(bookings)
+}
+capacity_frac(p = 0.64)
+
+```
+
+# Relationship between capacity and bookings
+```{r}
+tic()
+n_to_book <- tibble(p = seq(from = 0.01, to = 0.999, by = 0.001)) %>% 
+  mutate(
+         rooms_10 = map_dbl(p, capacity_frac, 10, 4, 0.001),
+         rooms_100 = map_dbl(p, capacity_frac, 1e2, 4, 0.001),
+         rooms_1000 = map_dbl(p, capacity_frac, 1e3, 4, 0.001), 
+         rooms_10000 = map_dbl(p, capacity_frac, 1e4, 4, 0.001),
+         rooms_100000 = map_dbl(p, capacity_frac, 1e5, 4, 0.001)
+         )
+toc()
+```
+```{r}
+n_to_book %>% 
+  pivot_longer(starts_with("rooms"), names_to = "capacity", values_to = "bookings") %>% 
+  ggplot(aes(x = p, y = bookings, color = capacity)) + 
+  geom_line() + 
+  scale_y_log10()
+
+```
+
+
 
 ```{r}
 test_pred <- test %>% 
@@ -101,9 +148,6 @@ sample_fn <- function(data_input) {
 ```
 
 ```{r}
-library(tictoc)
-
-tic()
 test_pred %>%
   group_by(check_in_date) %>% 
   nest() %>% 
@@ -112,7 +156,7 @@ test_pred %>%
     sum_capacity = map_dbl(data, ~sum(.x$cap_fra)
          )) %>% 
   mutate(cheese = map(data, sample_fn))
-toc()
+
 ```
 
 
