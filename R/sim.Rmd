@@ -9,4 +9,113 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+
+```{r}
+library(tidymodels)
+library(lubridate)
+source(here::here("R", "capacity_frac.R"))
+hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
+```
+
+```{r}
+hotels <- hotels %>% 
+    mutate(
+    check_in_date = ymd(paste(arrival_date_year, arrival_date_month,
+                                      arrival_date_day_of_month)),
+    reservation_date = check_in_date, 
+    booking_date = check_in_date - days(lead_time),
+         stay_length = stays_in_week_nights + stays_in_weekend_nights,
+         check_out_date = if_else(reservation_status != "No-Show",
+                                  reservation_date + days(stay_length), ymd("NA"))) %>% 
+  select(booking_date, is_canceled, hotel,customer_type, adults, children, babies, lead_time, stay_length, deposit_type, check_in_date, check_out_date)
+
+```
+
+```{r}
+hotels %>% 
+  group_by(booking_date) %>% 
+  count() %>% 
+  filter(year(booking_date) > 2015) %>% 
+  ggplot(aes(x = booking_date, y = n)) + 
+  geom_line()
+
+hotels %>% 
+  group_by(check_in_date, hotel) %>% 
+  count() %>% 
+  filter(year(check_in_date) > 2015) %>% 
+  ggplot(aes(x = check_in_date, y = n, color = hotel)) + 
+  geom_line() + 
+  facet_wrap(~hotel, nrow = 2)
+hotels
+```
+
+```{r}
+city_hotel <- hotels %>% 
+  filter(hotel == "City Hotel")
+
+training_dates <- city_hotel %>% 
+  count(check_in_date) %>% 
+  arrange(check_in_date) %>% 
+  slice(round(0.8*n()):793) %>%  # 80% trian set 
+  pull(check_in_date)
+
+
+train <- city_hotel %>% 
+  filter(!check_in_date %in% training_dates)
+test <- city_hotel %>% 
+  filter(check_in_date %in% training_dates)
+
+```
+
+```{r}
+logistic_fit <- glm(is_canceled ~ customer_type +
+                      adults + 
+                      children + 
+                      babies + 
+                      lead_time + 
+                      stay_length + 
+                      deposit_type, data = train,
+                      family = binomial(link = logit))
+```
+
+```{r}
+test_pred <- test %>% 
+  mutate(p_hat = predict(logistic_fit, newdata = test, type = "response"),
+         cap = map_dbl(p_hat, capacity_frac),
+         cap_fra = 1/cap) 
+```
+
+```{r}
+sample_fn <- function(data_input) {
+  success <- FALSE; i <- 1; samp <- data_input
+  
+  while(!success) {
+    samp[i,] <- sample_n(data_input, size = 1, replace = TRUE )
+    success <- sum(samp$cap_fra) > 1
+    i <- i + 1
+  }
+  samp <- samp[1:i,]
+  
+  return(samp)
+}
+```
+
+```{r}
+library(tictoc)
+
+tic()
+test_pred %>%
+  group_by(check_in_date) %>% 
+  nest() %>% 
+  mutate(
+         count = map_dbl(data, nrow),
+    sum_capacity = map_dbl(data, ~sum(.x$cap_fra)
+         )) %>% 
+  mutate(cheese = map(data, sample_fn))
+toc()
+```
+
+
+
+
+
