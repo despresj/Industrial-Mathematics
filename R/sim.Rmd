@@ -1,0 +1,12 @@
+---
+title: "simulation"
+author: "Joe Despres"
+date: "9/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
