@@ -85,11 +85,11 @@ P_overbook <- 0; bookings <- rooms;
 
   if(p > min_p) {
     while(E_m1 >= E) {
-      E <-  bookings * Fx - (bookings - loss) * bookings * P_overbook
+      E <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
       Fx <-  pbinom(rooms, bookings, p, lower.tail = TRUE)
-      P_overbook <-  1 - Fx
       bookings <-  bookings + 1
-      E_m1 <-  bookings * Fx - (bookings - loss) * bookings * P_overbook
+      P_overbook <-  1 - Fx
+      E_m1 <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
       }
   }
   else {
@@ -97,7 +97,7 @@ P_overbook <- 0; bookings <- rooms;
   }
   return(bookings)
 }
-capacity_frac(p = 0.64)
+capacity_frac(p=0.20)
 
 ```
 
@@ -107,10 +107,9 @@ tic()
 n_to_book <- tibble(p = seq(from = 0.01, to = 0.999, by = 0.001)) %>% 
   mutate(
          rooms_10 = map_dbl(p, capacity_frac, 10, 4, 0.001),
-         rooms_100 = map_dbl(p, capacity_frac, 1e2, 4, 0.001),
-         rooms_1000 = map_dbl(p, capacity_frac, 1e3, 4, 0.001), 
-         rooms_10000 = map_dbl(p, capacity_frac, 1e4, 4, 0.001),
-         rooms_100000 = map_dbl(p, capacity_frac, 1e5, 4, 0.001)
+         rooms_20 = map_dbl(p, capacity_frac, 20, 4, 0.001),
+         rooms_30 = map_dbl(p, capacity_frac, 30, 4, 0.001), 
+         rooms_100 = map_dbl(p, capacity_frac, 1e2, 4, 0.001)
          )
 toc()
 ```
@@ -119,10 +118,10 @@ n_to_book %>%
   pivot_longer(starts_with("rooms"), names_to = "capacity", values_to = "bookings") %>% 
   ggplot(aes(x = p, y = bookings, color = capacity)) + 
   geom_line() + 
-  scale_y_log10()
-
+  scale_y_log10() + 
+  geom_hline(yintercept = c(1e1, 1e2, 1e3, 1e4)) +
+  facet_wrap(~rooms)
 ```
-
 
 
 ```{r}
@@ -130,15 +129,17 @@ test_pred <- test %>%
   mutate(p_hat = predict(logistic_fit, newdata = test, type = "response"),
          cap = map_dbl(p_hat, capacity_frac),
          cap_fra = 1/cap) 
+
+test_pred 
 ```
 
 ```{r}
-sample_fn <- function(data_input) {
+sample_fn <- function(data_input, p_threash = 0.8) {
   success <- FALSE; i <- 1; samp <- data_input
   
   while(!success) {
     samp[i,] <- sample_n(data_input, size = 1, replace = TRUE )
-    success <- sum(samp$cap_fra) > 1
+    success <- sum(samp$cap_fra) > p_threash
     i <- i + 1
   }
   samp <- samp[1:i,]
@@ -148,16 +149,30 @@ sample_fn <- function(data_input) {
 ```
 
 ```{r}
-test_pred %>%
-  group_by(check_in_date) %>% 
-  nest() %>% 
-  mutate(
-         count = map_dbl(data, nrow),
-    sum_capacity = map_dbl(data, ~sum(.x$cap_fra)
-         )) %>% 
-  mutate(cheese = map(data, sample_fn))
+set.seed(1999)
 
+test_resampled <- test_pred %>%
+  group_by(check_in_date) %>% 
+  add_count() %>% 
+  filter(n > 50) %>% 
+  nest() %>%
+  mutate(
+          resampled_bookings = map(data, sample_fn)
+         )
 ```
+
+```{r}
+test_resampled %>% 
+  mutate(cancallations = map_dbl(resampled_bookings,
+                                 ~sum(.x$is_canceled, na.rm = TRUE)),
+         bookings = map_dbl(resampled_bookings, ~nrow(.x)),
+         total_guests = bookings - cancallations,
+         avalible_rooms = 100 - total_guests)
+```
+
+
+
+
 
 
 
