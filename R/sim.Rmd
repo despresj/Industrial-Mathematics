@@ -115,12 +115,10 @@ toc()
 ```
 ```{r}
 n_to_book %>% 
-  pivot_longer(starts_with("rooms"), names_to = "capacity", values_to = "bookings") %>% 
+  pivot_longer(starts_with("rooms"), names_to = "capacity", values_to = "bookings") %>%
   ggplot(aes(x = p, y = bookings, color = capacity)) + 
   geom_line() + 
-  scale_y_log10() + 
-  geom_hline(yintercept = c(1e1, 1e2, 1e3, 1e4)) +
-  facet_wrap(~rooms)
+  scale_y_log10() 
 ```
 
 
