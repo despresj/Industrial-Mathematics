@@ -130,7 +130,7 @@ library(tictoc)
 
 ## ---------------------------------------------------------------------
 
-sim_iters <- map(1:1e4, simulater) %>% 
+sim_iters <- map(1:1e3, simulater) %>% 
   bind_rows()
 
 
