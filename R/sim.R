@@ -1,25 +1,17 @@
----
-title: "simulation"
-author: "Joe Despres"
-date: "9/27/2021"
-output: html_document
----
-
-```{r setup, include=FALSE}
+## ----setup, include=FALSE---------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-```
 
 
-```{r}
+## ---------------------------------------------------------------------
 library(tidymodels)
 library(lubridate)
 library(tictoc)
 library(patchwork)
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
 theme_set(theme_light())
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 hotels <- hotels %>% 
     mutate(
     check_in_date = ymd(paste(arrival_date_year, arrival_date_month,
@@ -31,9 +23,9 @@ hotels <- hotels %>%
                                   reservation_date + days(stay_length), ymd("NA"))) %>% 
   select(booking_date, is_canceled, hotel,customer_type, adults, children, babies, lead_time, stay_length, deposit_type, check_in_date, check_out_date) %>% 
   mutate(not_canceled = (is_canceled - 1) * -1)
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 city_hotel <- hotels %>% 
   filter(hotel == "City Hotel")
 
@@ -48,9 +40,8 @@ train <- city_hotel %>%
 
 test <- city_hotel %>% 
   filter(check_in_date %in% training_dates)
-```
 
-```{r results='asis'}
+
 logistic_fit <- glm(not_canceled ~ customer_type +
                       adults + 
                       children + 
@@ -60,10 +51,7 @@ logistic_fit <- glm(not_canceled ~ customer_type +
                       deposit_type, data = train,
                       family = binomial(link = logit))
 
-stargazer::stargazer(logistic_fit, type = 'html')
-```
-
-```{r}
+## ---------------------------------------------------------------------
 capacity_frac <- function (p, rooms=100, loss=4, min_p=0.01) {
 E <- 0; E_m1 <- 0; Fx <- 0;
 P_overbook <- 0; bookings <- rooms;
@@ -81,17 +69,17 @@ P_overbook <- 0; bookings <- rooms;
   }
   return(bookings)
 }
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 test_pred <- test %>% 
   mutate(p_hat = predict(logistic_fit, 
                          newdata = test, type = "response"),
          cap = map_dbl(p_hat, capacity_frac),
          cap_fra = 1/cap) 
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 sample_fn_overbook <- function(data_input, p_threash = 0.99) {
   
   success <- FALSE; i <- 1; samp <- data_input[1,]
@@ -104,16 +92,16 @@ sample_fn_overbook <- function(data_input, p_threash = 0.99) {
   
   return(samp)
 }
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 sample_capacity <- function(data_input, capacity = 100) {
   output <- slice_sample(data_input, n = capacity, replace = TRUE)
   return(output)
 }
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 simulater <- function (x) {
   message(paste0(x))
  test_pred %>%
@@ -134,66 +122,20 @@ simulater <- function (x) {
          )   %>%
   select_if(is.numeric)
 }
-```
 
-```{r}
+
+## ---------------------------------------------------------------------
 library(tictoc)
-```
 
 
-```{r}
-tic()
-sim_iters <- map(1:2, simulater) %>% 
+## ---------------------------------------------------------------------
+
+sim_iters <- map(1:1e4, simulater) %>% 
   bind_rows()
-toc()
+
 
 sim_iters %>% 
     select_if(is.numeric) %>% 
 write.csv(here::here("data", "sim_results_iterations.csv"))
-```
-
-
-```{r}
-
-sim_results <- test_pred %>%
-  group_by(check_in_date) %>% 
-  nest() %>%
-  mutate(
-         resampled_overbookings = map(data, sample_fn_overbook),
-         resampled_capacity = map(data, sample_capacity),
-         
-         over_nbookings = map_dbl(resampled_overbookings, ~nrow(.x)),
-         over_canceled = map_dbl(resampled_overbookings, ~sum(.x$is_canceled, na.rm = TRUE)),
-         over_booking_arrivals = over_nbookings - over_canceled,
-         
-         booking_n = map_dbl(resampled_capacity, ~nrow(.x)),
-         booking_canceled = map_dbl(resampled_capacity, ~sum(.x$is_canceled, na.rm = TRUE)),
-         booking_arrivals = booking_n - booking_canceled
-         )
-
-```
-
-```{r}
-sim_results %>% 
-  select_if(is.numeric) %>% 
-write.csv(here::here("data", "sim_results.csv"))
-```
-
-```{r}
-sim_results %>% 
-  ungroup() %>% 
-  select(check_in_date, over_nbookings:ncol(.)) %>% 
-  mutate(penalty = if_else(over_booking_arrivals > 100, (over_booking_arrivals - 100) * 4, 0),
-         over_empty_rooms = if_else(over_booking_arrivals < 100, 100 - over_booking_arrivals, 0),
-         booking_empty_rooms = if_else(booking_arrivals < 100, 100 - booking_arrivals, 0)) %>% 
-  summarise(overbooking_arrivals = sum(over_booking_arrivals),
-            booking_arrivals = sum(booking_arrivals),
-            
-            overbooking_penalty = sum(penalty),
-            overbooking_empty_rooms = sum(over_empty_rooms),
-            booking_empty_rooms = sum(booking_empty_rooms),
-            )
-```
-
 
 
