@@ -74,23 +74,43 @@ ggsave(here::here("R","figures", "Figure2.png"),
 
 
 
+capacity_frac <- function (p, rooms=100, loss=4, min_p=0.065) {
+  E <- 0; E_m1 <- 0; Fx <- 0;
+  P_overbook <- 0; bookings <- rooms;
+  
+  if(p > min_p) {
+    while(E_m1 >= E) {
+      E <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+      Fx <-  pbinom(rooms, bookings, p, lower.tail = TRUE)
+      bookings <-  bookings + 1
+      P_overbook <-  1 - Fx
+      E_m1 <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+    }
+  } else {
+    bookings = rooms * 10
+  }
+  return(bookings)
+}
 
 
 
 
 
 
+# APP A3
 
 sample_fn_overbook <- function(data_input, p_threash=0.99) {
   # Input data for a single booking date
-  success <- FALSE; i <- 1; # Initializing
+  success <- FALSE
+  i <- 1
   samp <- data_input[1,]
   while(!success) {
-    samp[i,] <- slice_sample(data_input, n = 1)# select booking at random until
-    success <- sum(samp$cap_fra) > p_threash   # expected capacity is reached
+    samp[i,] <- slice_sample(data_input, n = 1) # randomly select booking until
+    success <- sum(samp$cap_fra) > p_threash    # expected capacity is reached
     i <- i + 1
   }
   samp <- samp[1:i,]
   # output resampled bookings 
   return(samp)
 }
+

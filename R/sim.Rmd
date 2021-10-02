@@ -17,6 +17,11 @@ library(tictoc)
 library(patchwork)
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
 theme_set(theme_light())
+
+
+hotels %>% 
+  group_by(customer_type) %>% 
+  count(is_canceled)
 ```
 
 ```{r}
@@ -54,30 +59,79 @@ test <- city_hotel %>%
 ```
 
 ```{r}
-train %>% View()
+numeric_vars <- hotels %>% 
+  select_if(is.numeric) 
+  
+min_ <- map_df(numeric_vars, min, na.rm = TRUE)
+mean_ <- map_df(numeric_vars, mean, na.rm = TRUE)
+median_ <- map_df(numeric_vars, median, na.rm = TRUE)
+sd_ <- map_df(numeric_vars, sd, na.rm = TRUE)
+max_ <- map_df(numeric_vars, max, na.rm = TRUE)
+
+
+b <- bind_rows(min_, mean_, median_, sd_, max_) 
+
+table <- bind_cols(tibble(" " = c("Minimum", "Mean", "Median", "Standard deviation", "Max")), b) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  relocate(not_canceled, .after = is_canceled) %>% 
+  rename_with(~str_replace_all(str_to_title(.x), "_", " ")) %>%
+  clipr::write_clip()
+```
+
+```{r}
+  
+ cat_vars <- hotels %>% 
+  select_if(is.character) 
+
+cat_vars %>% 
+  group_by(customer_type, deposit) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  rename_with(~str_replace_all(str_to_title(.x), "_", " ")) %>% 
+  mutate(N = prettyNum(N, big.mark = ",")) %>% 
+  clipr::write_clip()
+
+  
 ```
 
 
-```{r results='asis'}
-logistic_fit <- glm(not_canceled ~ customer_type +
+```{r}
+logistic_fit <- glm(not_canceled ~ 
                       adults + 
                       children + 
                       babies + 
                       lead_time + 
                       stay_length + 
+                      customer_type +
                       deposit, data = train,
                       family = binomial(link = logit))
 
-# stargazer::stargazer(logistic_fit, type = 'html', 
+# logistic_fit1 <- glm(not_canceled ~ 
+#                       adults + 
+#                       children + 
+#                       babies + 
+#                       lead_time + 
+#                       stay_length, data = train,
+#                       family = binomial(link = logit))
+# 
+# logistic_fit2 <- glm(not_canceled ~ 
+#                       adults + 
+#                       children + 
+#                       babies, data = train,
+#                       family = binomial(link = logit))
+# 
+# 
+# stargazer::stargazer(logistic_fit,logistic_fit1,logistic_fit2, type = 'html',
 #                      dep.var.labels = "Log Odds of Arrival",
-#                      covariate.labels = c("Customer Type: Group",
-#                                           "Customer Type: Transient",
-#                                           "Customer Type: Tranient-Party",
+#                      covariate.labels = c(
 #                                           "Adults", "Children",
 #                                           "Babies", "Lead Time (Days)",
 #                                           "Stay Length (Days)",
+#                                           "Customer Type: Group",
+#                                           "Customer Type: Transient",
+#                                           "Customer Type: Tranient-Party",
 #                                           "No Deposit")
-#                       ) %>% 
+#                       ) %>%
 #   clipr::write_clip()
 ```
 
@@ -88,11 +142,11 @@ P_overbook <- 0; bookings <- rooms;
 
   if(p > min_p) {
     while(E_m1 >= E) {
-      E <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+      E <-  bookings * Fx - loss * (bookings - rooms) * P_overbook
       Fx <-  pbinom(rooms, bookings, p, lower.tail = TRUE)
       bookings <-  bookings + 1
       P_overbook <-  1 - Fx
-      E_m1 <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+      E_m1 <-  bookings * Fx - loss * (bookings - rooms) * P_overbook
       }
   } else {
     bookings = rooms * 10
@@ -133,6 +187,14 @@ sample_capacity <- function(data_input, capacity = 100) {
 ```
 
 ```{r}
+sample_same_phat <- function(data_input, capacity = 100) {
+  output <- slice_sample(data_input, n = 129, replace = TRUE)
+  return(output)
+}
+```
+
+
+```{r}
 simulater <- function (x) {
   message(paste0(x))
  test_pred %>%
@@ -140,15 +202,21 @@ simulater <- function (x) {
   nest() %>%
   mutate(
          resampled_overbookings = map(data, sample_fn_overbook),
+         resampled_same_phat = map(data, sample_same_phat),
          resampled_capacity = map(data, sample_capacity),
          
          over_nbookings = map_dbl(resampled_overbookings, ~nrow(.x)),
          over_canceled = map_dbl(resampled_overbookings, ~sum(.x$is_canceled, na.rm = TRUE)),
          over_booking_arrivals = over_nbookings - over_canceled,
          
+         over_same_phat = map_dbl(resampled_same_phat, ~nrow(.x)),
+         over_canceled_same_p = map_dbl(resampled_same_phat, ~sum(.x$is_canceled, na.rm = TRUE)),
+         over_booking_arrivals_phat = over_nbookings - over_canceled,
+         
          booking_n = map_dbl(resampled_capacity, ~nrow(.x)),
          booking_canceled = map_dbl(resampled_capacity, ~sum(.x$is_canceled, na.rm = TRUE)),
          booking_arrivals = booking_n - booking_canceled,
+         
          iter = x
          )   %>%
   select_if(is.numeric)
@@ -173,43 +241,32 @@ write.csv(here::here("data", "sim_results_iterations.csv"))
 
 
 ```{r}
-sim_results <- test_pred %>%
-  group_by(check_in_date) %>% 
-  nest() %>%
-  mutate(
-         resampled_overbookings = map(data, sample_fn_overbook),
-         resampled_capacity = map(data, sample_capacity),
-         
-         over_nbookings = map_dbl(resampled_overbookings, ~nrow(.x)),
-         over_canceled = map_dbl(resampled_overbookings, ~sum(.x$is_canceled, na.rm = TRUE)),
-         over_booking_arrivals = over_nbookings - over_canceled,
-         
-         booking_n = map_dbl(resampled_capacity, ~nrow(.x)),
-         booking_canceled = map_dbl(resampled_capacity, ~sum(.x$is_canceled, na.rm = TRUE)),
-         booking_arrivals = booking_n - booking_canceled
-         )
+sim_results <- read_csv(here::here("data", "sim_results_iterations.csv")) 
 ```
 
 ```{r}
 sim_results %>% 
-  select_if(is.numeric) %>% 
-write.csv(here::here("data", "sim_results.csv"))
+  ggplot(aes(x = check_in_date, y = over_booking_arrivals)) + 
+  stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
+  geom_hline(yintercept = 100, color = "red") + 
+  labs(x = "Booking Results", y = "Number of Arrivals") + 
+  scale_fill_viridis_c()
 ```
-
 ```{r}
 sim_results %>% 
-  ungroup() %>% 
-  select(check_in_date, over_nbookings:ncol(.)) %>% 
-  mutate(penalty = if_else(over_booking_arrivals > 100, (over_booking_arrivals - 100) * 4, 0),
-         over_empty_rooms = if_else(over_booking_arrivals < 100, 100 - over_booking_arrivals, 0),
-         booking_empty_rooms = if_else(booking_arrivals < 100, 100 - booking_arrivals, 0)) %>% 
-  summarise(overbooking_arrivals = sum(over_booking_arrivals),
-            booking_arrivals = sum(booking_arrivals),
-            
-            overbooking_penalty = sum(penalty),
-            overbooking_empty_rooms = sum(over_empty_rooms),
-            booking_empty_rooms = sum(booking_empty_rooms),
-            )
+  select(check_in_date,over_booking_arrivals, over_booking_arrivals_phat, booking_arrivals) %>% 
+  pivot_longer(cols = over_booking_arrivals:booking_arrivals, names_to = "strategy", values_to = "arrivals") %>% 
+    ggplot(aes(x = check_in_date, y = arrivals)) + 
+  stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
+  geom_hline(yintercept = 100, color = "red") + 
+  labs(x = "Booking Results", y = "Number of Arrivals") + 
+  scale_fill_viridis_c() + 
+  scale_y_continuous(limits = c(0, 125)) + 
+  facet_wrap(~strategy, ncol = 1)
+
+# ggsave(here::here("R","figures", "Figure_sim_test.png"), 
+#        height = 11, width = 8.5)
+
 ```
 
 

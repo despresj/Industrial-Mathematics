@@ -54,18 +54,19 @@ logistic_fit <- glm(not_canceled ~ customer_type +
 equatiomatic::extract_eq(model = logistic_fit, use_coefs = TRUE, show_distribution = TRUE)
 # results='asis' in code chunk to render as LaTex
 
-## ---------------------------------------------------------------------
 capacity_frac <- function (p, rooms=100, loss=4, min_p=0.065) {
-E <- 0; E_m1 <- 0; Fx <- 0;
-P_overbook <- 0; bookings <- rooms;
+  
+  # input phat associated with each booking 
+  E <- 0; E_m1 <- 0; Fx <- 0; P_overbook <- 0; bookings <- rooms;
+  # Initialize values 
 
-  if(p > min_p) {
+  if(p > min_p) { # set a maximum overbooking threshold
     while(E_m1 >= E) {
-      E <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+      E <-  bookings * Fx - loss * ((bookings - rooms) * P_overbook)
       Fx <-  pbinom(rooms, bookings, p, lower.tail = TRUE)
       bookings <-  bookings + 1
       P_overbook <-  1 - Fx
-      E_m1 <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
+      E_m1 <-  bookings * Fx - loss * ((bookings - rooms) * P_overbook)
       }
   } else {
     bookings = rooms * 10
@@ -73,8 +74,6 @@ P_overbook <- 0; bookings <- rooms;
   return(bookings)
 }
 
-
-## ---------------------------------------------------------------------
 test_pred <- test %>% 
   mutate(p_hat = predict(logistic_fit, 
                          newdata = test, type = "response"),
@@ -82,34 +81,36 @@ test_pred <- test %>%
          cap_fra = 1/cap) 
 
 
-## ---------------------------------------------------------------------
-sample_fn_overbook <- function(data_input, p_threash = 0.99) {
-  
-  success <- FALSE; i <- 1; 
+sample_fn_overbook <- function(data_input, p_threash=0.99) {
+  # Input data for a single booking date
+  success <- FALSE
+  i <- 1
   samp <- data_input[1,]
   while(!success) {
-    samp[i,] <- slice_sample(data_input, n = 1)
-    success <- sum(samp$cap_fra) > p_threash
+    samp[i,] <- slice_sample(data_input, n = 1) # randomly select booking until
+    success <- sum(samp$cap_fra) > p_threash    # expected capacity is reached
     i <- i + 1
   }
   samp <- samp[1:i,]
-  
+  # output resampled bookings 
   return(samp)
 }
 
-
-## ---------------------------------------------------------------------
 sample_capacity <- function(data_input, capacity = 100) {
+  # Input data for a single booking date
   output <- slice_sample(data_input, n = capacity, replace = TRUE)
+  # Sample to hotel capacity with replacement
   return(output)
 }
 
 
 sample_same_phat <- function(data_input, capacity = 100) {
+  # Input data for a single booking date
   output <- slice_sample(data_input, n = 129, replace = TRUE)
+  # Sample 129 rooms assuming each guest has the same
+  # likelyhood of arrival
   return(output)
 }
-
 
 simulater <- function (x) {
   message(paste0(x))
@@ -138,13 +139,14 @@ simulater <- function (x) {
     select_if(is.numeric)
 }
 
+sim_iters <- map(1:2.5e3, simulater) %>%
+  # run simulation 2500 times
+  # note this requires approximately
+  # 18 hours of computer time
+  bind_rows()
 
 ## ---------------------------------------------------------------------
 
-
-
-sim_iters <- map(1:2.5e3, simulater) %>%
-  bind_rows()
 
 sim_iters %>%
     select_if(is.numeric) %>%
