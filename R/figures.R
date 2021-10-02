@@ -2,6 +2,7 @@ library(tidyverse)
 library(patchwork)
 library(lubridate)
 library(extrafont)
+library(latex2exp)
 theme_set(theme_light())
 source(here::here("R", "capacity_frac.R"))
 
@@ -10,31 +11,20 @@ figure1 <- tibble(p = seq(from = 0.001, to = 1, by = 0.001)) %>%
   mutate(bookings = map_dbl(p, capacity_frac, 100, 4, 0.0001)) %>% 
   ggplot(aes(x = p, 
              y = bookings, 
-             color = bookings > 240, 
-             linetype = bookings > 240)) + 
+             color = bookings > 1e3, 
+             linetype = bookings > 1e3)) + 
   geom_line() + 
-  scale_x_reverse(breaks = c(1, 0.75, 0.5, 0.3, 0.25, 0)) + 
-  scale_y_log10(labels=scales::comma_format(), limits = c(100, 1e5),
-                breaks = c(100, 240, 1e3, 1e4, 1e5)) + 
-  labs(title = "Number of Bookings to Accept if a Hotel has 100 Rooms",
-       y = "Estimated Number of Bookings to Make",
-       x = "Probability of a Guest's Arrival",
+  scale_x_reverse(breaks = c(1, 0.75, 0.5, 0.25, 0.065, 0)) + 
+  scale_y_log10(labels=scales::comma_format(), limits = c(100, 1e4),
+                breaks = c(100, 1e3, 1e4, 1e5)) + 
+  labs(title = NULL,
+       y = TeX("Optimum Number of Bookings to Make $b^*$"),
+       x = TeX("Probability of a Guest's Arrival $\\hat{p}$"),
        color =  NULL, 
        linetype = NULL) +
-  annotate("text", family="Arial",
-           x = 0.6, y = 1.2e4, 
-           label = "As the probability of a guest arriving approaches 0\npredicted number of bookings goes to infinity") +
-  annotate("segment", 
-           x = 0.3, xend = 0.05, 
-           y = 1e4, yend = 1e4, 
-           colour = "black", size=0.5, alpha=1, 
-           arrow=arrow(type = "closed", length = unit(0.02, "npc"))) +
-  annotate("text", family="Arial",
-           x = 0.65, y = 5e2, 
-           label = "Avoid catastrophic losses by restricting the \nbookings to 2.4 times capacity") + 
   annotate("point", 
-           x = 0.3,
-           y = 240,
+           x = 0.0665,
+           y = 1000,
            colour = "red", size=2, alpha=0.8) + 
   scale_linetype_manual(values=c("solid", "twodash"))+
   scale_color_manual(values=c('black','red')) + 
@@ -46,6 +36,7 @@ figure1
 ggsave(here::here("R","figures", "Figure1.png"), 
        height = 11/3, width = 8.5) # 1/3 of a page
 
+capacity_frac(0.065)
 
 # fig 2 -------------------------------------------------------------------
 
@@ -77,3 +68,29 @@ no_overbooking <- sim_results %>%
 overbooking + no_overbooking
 ggsave(here::here("R","figures", "Figure2.png"), 
        height = 11/3, width = 8.5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+sample_fn_overbook <- function(data_input, p_threash=0.99) {
+  # Input data for a single booking date
+  success <- FALSE; i <- 1; # Initializing
+  samp <- data_input[1,]
+  while(!success) {
+    samp[i,] <- slice_sample(data_input, n = 1)# select booking at random until
+    success <- sum(samp$cap_fra) > p_threash   # expected capacity is reached
+    i <- i + 1
+  }
+  samp <- samp[1:i,]
+  # output resampled bookings 
+  return(samp)
+}

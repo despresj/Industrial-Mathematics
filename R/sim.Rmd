@@ -30,7 +30,10 @@ hotels <- hotels %>%
          check_out_date = if_else(reservation_status != "No-Show",
                                   reservation_date + days(stay_length), ymd("NA"))) %>% 
   select(booking_date, is_canceled, hotel,customer_type, adults, children, babies, lead_time, stay_length, deposit_type, check_in_date, check_out_date) %>% 
-  mutate(not_canceled = (is_canceled - 1) * -1)
+  mutate(not_canceled = (is_canceled - 1) * -1,
+       deposit = if_else(deposit_type == "Refundable" | 
+                                deposit_type == "Non Refund", "Deposit", "No Deposit"))
+
 ```
 
 ```{r}
@@ -50,6 +53,11 @@ test <- city_hotel %>%
   filter(check_in_date %in% training_dates)
 ```
 
+```{r}
+train %>% View()
+```
+
+
 ```{r results='asis'}
 logistic_fit <- glm(not_canceled ~ customer_type +
                       adults + 
@@ -57,14 +65,24 @@ logistic_fit <- glm(not_canceled ~ customer_type +
                       babies + 
                       lead_time + 
                       stay_length + 
-                      deposit_type, data = train,
+                      deposit, data = train,
                       family = binomial(link = logit))
 
-stargazer::stargazer(logistic_fit, type = 'html')
+# stargazer::stargazer(logistic_fit, type = 'html', 
+#                      dep.var.labels = "Log Odds of Arrival",
+#                      covariate.labels = c("Customer Type: Group",
+#                                           "Customer Type: Transient",
+#                                           "Customer Type: Tranient-Party",
+#                                           "Adults", "Children",
+#                                           "Babies", "Lead Time (Days)",
+#                                           "Stay Length (Days)",
+#                                           "No Deposit")
+#                       ) %>% 
+#   clipr::write_clip()
 ```
 
 ```{r}
-capacity_frac <- function (p, rooms=100, loss=4, min_p=0.01) {
+capacity_frac <- function (p, rooms=100, loss=4, min_p=0.065) {
 E <- 0; E_m1 <- 0; Fx <- 0;
 P_overbook <- 0; bookings <- rooms;
 
@@ -77,10 +95,11 @@ P_overbook <- 0; bookings <- rooms;
       E_m1 <-  bookings * Fx - loss * (bookings - rooms) * bookings * P_overbook
       }
   } else {
-    bookings = rooms * 2.4
+    bookings = rooms * 10
   }
   return(bookings)
 }
+
 ```
 
 ```{r}
@@ -154,7 +173,6 @@ write.csv(here::here("data", "sim_results_iterations.csv"))
 
 
 ```{r}
-
 sim_results <- test_pred %>%
   group_by(check_in_date) %>% 
   nest() %>%
@@ -170,7 +188,6 @@ sim_results <- test_pred %>%
          booking_canceled = map_dbl(resampled_capacity, ~sum(.x$is_canceled, na.rm = TRUE)),
          booking_arrivals = booking_n - booking_canceled
          )
-
 ```
 
 ```{r}
