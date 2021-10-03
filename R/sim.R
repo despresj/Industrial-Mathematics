@@ -139,18 +139,13 @@ simulater <- function (x) {
     select_if(is.numeric)
 }
 
-sim_iters <- map(1:2.5e3, simulater) %>%
+map(1:2.5e3, simulater) %>%
   # run simulation 2500 times
   # note this requires approximately
   # 18 hours of computer time
-  bind_rows()
-
-## ---------------------------------------------------------------------
-
-
-sim_iters %>%
-    select_if(is.numeric) %>%
-write.csv(here::here("data", "sim_results_iterations.csv"))
+  bind_rows() %>% 
+  select_if(is.numeric) %>%
+  readr::write_csv(here::here("data", "sim_results_iterations_2.csv"))
 
 
 # sim <- here::here("data", "sim_results_iterations.csv") %>% 
@@ -169,20 +164,6 @@ write.csv(here::here("data", "sim_results_iterations.csv"))
 # 
 # ggsave(here::here("R","figures", "Figure_sim_test.png"), 
 #        height = 11/3, width = 8.5)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

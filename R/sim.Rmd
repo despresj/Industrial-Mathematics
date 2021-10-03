@@ -211,7 +211,7 @@ simulater <- function (x) {
          
          over_same_phat = map_dbl(resampled_same_phat, ~nrow(.x)),
          over_canceled_same_p = map_dbl(resampled_same_phat, ~sum(.x$is_canceled, na.rm = TRUE)),
-         over_booking_arrivals_phat = over_nbookings - over_canceled,
+         over_same_phat_arrivals = over_nbookings - over_canceled_same_p,
          
          booking_n = map_dbl(resampled_capacity, ~nrow(.x)),
          booking_canceled = map_dbl(resampled_capacity, ~sum(.x$is_canceled, na.rm = TRUE)),
@@ -241,8 +241,16 @@ write.csv(here::here("data", "sim_results_iterations.csv"))
 
 
 ```{r}
-sim_results <- read_csv(here::here("data", "sim_results_iterations.csv")) 
+sim_results <- here::here("data", "sim_results_iterations.csv") %>% 
+   readr::read_csv() %>% 
+  mutate(over_booking_arrivals_phat = over_nbookings - over_canceled_same_p) %>% 
+  rename(over_same_phat_arrivals = over_booking_arrivals_phat)
 ```
+
+```{r}
+sim_results %>% View()
+```
+
 
 ```{r}
 sim_results %>% 
@@ -252,21 +260,72 @@ sim_results %>%
   labs(x = "Booking Results", y = "Number of Arrivals") + 
   scale_fill_viridis_c()
 ```
+
 ```{r}
-sim_results %>% 
-  select(check_in_date,over_booking_arrivals, over_booking_arrivals_phat, booking_arrivals) %>% 
-  pivot_longer(cols = over_booking_arrivals:booking_arrivals, names_to = "strategy", values_to = "arrivals") %>% 
-    ggplot(aes(x = check_in_date, y = arrivals)) + 
-  stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
-  geom_hline(yintercept = 100, color = "red") + 
-  labs(x = "Booking Results", y = "Number of Arrivals") + 
-  scale_fill_viridis_c() + 
-  scale_y_continuous(limits = c(0, 125)) + 
-  facet_wrap(~strategy, ncol = 1)
+sim <- sim_results %>% 
+  select(check_in_date,over_booking_arrivals, over_same_phat_arrivals, booking_arrivals) %>% 
+  pivot_longer(cols = over_booking_arrivals:booking_arrivals, names_to = "strategy", values_to = "arrivals") %>%
+  mutate(strat_name = case_when(
+                                strategy == "over_booking_arrivals"   ~ "Proposed Overbooking Strategy",
+                                strategy == "over_same_phat_arrivals" ~ "Overbooking with Constant P",
+                                strategy == "booking_arrivals"        ~ "Booking at Capacity",
+                                ),
+         strat_name = fct_relevel(strat_name,
+                                     "Proposed Overbooking Strategy",
+                                     "Overbooking with Constant P",
+                                     "Booking at Capacity"
+                                     ))
+```
 
-# ggsave(here::here("R","figures", "Figure_sim_test.png"), 
-#        height = 11, width = 8.5)
+```{r}
+sim_summary <- sim %>% 
+  group_by(check_in_date, strat_name) %>% 
+  summarise(mean = mean(arrivals),
+            x_05 = quantile(arrivals, 0.05),
+            x_95 = quantile(arrivals, 0.95),
+            )
+```
 
+
+```{r}
+points <- ggplot(data = sim) + 
+    geom_point(aes(x = check_in_date, y = arrivals), color = "grey85", alpha = 0.1) 
+```
+
+```{r}
+points
+```
+
+```{r}
+stat_lines <- points + 
+    # stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
+    geom_line(data = sim_summary, aes(x = check_in_date, y = mean),
+              color = "black") + 
+    geom_line(data = sim_summary, aes(x = check_in_date, y = x_95),
+              color = "grey30", linetype = "dashed", alpha = .9) + 
+    geom_line(data = sim_summary, aes(x = check_in_date, y = x_05), 
+              color = "grey30", linetype = "dashed", alpha = .9)
+```
+
+```{r}
+stat_lines
+```
+
+```{r}
+stat_lines +
+    geom_hline(yintercept = 100, color = "red") + 
+    labs(x = "Booking Results", y = "Number of Arrivals", fill = "Frequency") + 
+    scale_fill_viridis_c(option = "B") + 
+    facet_wrap(~strat_name, ncol = 1, scales = "free") + 
+    theme_bw()
+
+ggsave(here::here("R","figures", "Figure_sim_test.png"),
+       height = 11, width = 8.5)
+```
+
+```{r}
+ggsave(here::here("R","figures", "Figure_sim_test.png"),
+       height = 11, width = 8.5)
 ```
 
 
