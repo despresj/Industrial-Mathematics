@@ -247,10 +247,6 @@ sim_results <- here::here("data", "sim_results_iterations.csv") %>%
   rename(over_same_phat_arrivals = over_booking_arrivals_phat)
 ```
 
-```{r}
-sim_results %>% View()
-```
-
 
 ```{r}
 sim_results %>% 
@@ -262,6 +258,7 @@ sim_results %>%
 ```
 
 ```{r}
+library(forcats)
 sim <- sim_results %>% 
   select(check_in_date,over_booking_arrivals, over_same_phat_arrivals, booking_arrivals) %>% 
   pivot_longer(cols = over_booking_arrivals:booking_arrivals, names_to = "strategy", values_to = "arrivals") %>%
