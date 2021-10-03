@@ -223,10 +223,6 @@ simulater <- function (x) {
 }
 ```
 
-```{r}
-library(tictoc)
-```
-
 
 ```{r}
 tic()

@@ -25,28 +25,18 @@ sim_results <- here::here("data", "sim_results_iterations.csv") %>%
 
 
 ```{r}
-sim_results %>% 
-  ggplot(aes(x = check_in_date, y = over_booking_arrivals)) + 
-  stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
-  geom_hline(yintercept = 100, color = "red") + 
-  labs(x = "Booking Results", y = "Number of Arrivals") + 
-  scale_fill_viridis_c()
-```
-
-```{r}
-library(forcats)
 sim <- sim_results %>% 
   select(check_in_date,over_booking_arrivals, over_same_phat_arrivals, booking_arrivals) %>% 
   pivot_longer(cols = over_booking_arrivals:booking_arrivals, names_to = "strategy", values_to = "arrivals") %>%
   mutate(strat_name = case_when(
                                 strategy == "over_booking_arrivals"   ~ "Proposed Overbooking Strategy",
-                                strategy == "over_same_phat_arrivals" ~ "Overbooking with Constant P",
+strategy == "over_same_phat_arrivals" ~ "Overbooking with Constant Probability of Arrival P = 0.64",
                                 strategy == "booking_arrivals"        ~ "Booking at Capacity",
                                 ),
          strat_name = fct_relevel(strat_name,
+                                     "Booking at Capacity",
+                                     "Overbooking with Constant Probability of Arrival P = 0.64",
                                      "Proposed Overbooking Strategy",
-                                     "Overbooking with Constant P",
-                                     "Booking at Capacity"
                                      ))
 ```
 
@@ -62,31 +52,50 @@ sim_summary <- sim %>%
 
 ```{r}
 points <- ggplot(data = sim) + 
-    geom_point(aes(x = check_in_date, y = arrivals), 
-               color = "grey85", alpha = 0.1, shape = 4, size = 0.5) 
-points
+    geom_point(aes(x = check_in_date, y = arrivals, color = arrivals > 100), 
+                alpha = 0.05, shape = 4, size = 0.5) 
 ```
 
 ```{r}
 stat_lines <- points + 
-    # stat_bin2d(aes(fill = after_stat(count)), binwidth = c(1,1)) +
-    geom_line(data = sim_summary, aes(x = check_in_date, y = mean),
-              color = "black") +
-    geom_ribbon(data = sim_summary, aes(x = check_in_date, ymin = x_05, ymax = x_95), color = "grey75")
-
-stat_lines
+    geom_ribbon(data = sim_summary, aes(x = check_in_date, ymin = x_05, ymax = x_95), 
+                fill = "grey55", alpha = 0.75) + 
+    geom_line(data = sim_summary, aes(x = check_in_date, y = mean), size = 0.5,
+              color = "black") 
 ```
 
 ```{r}
 stat_lines +
-    geom_hline(yintercept = 100, color = "red") + 
-    labs(x = "Booking Results", y = "Number of Arrivals", fill = "Frequency") + 
-    scale_fill_viridis_c(option = "B") + 
-    facet_wrap(~strat_name, ncol = 1, scales = "free") + 
-    theme_bw()
+  geom_hline(yintercept = 100, color = "red", size = 0.25, linetype = "dashed") + 
+  labs(x = "Booking Results", y = "Number of Arrivals in Overbooking Simulation") + 
+  scale_color_manual(values = c("grey55", "red")) + 
+  facet_wrap(~strat_name, ncol = 1, scales = "free") + 
+    theme_bw() +
+  theme(legend.position = "none", strip.background = element_rect(fill="white")) 
 
-ggsave(here::here("R","figures", "Figure_sim_test.png"),
+
+ggsave(here::here("R","figures", "Figure2.png"),
        height = 11, width = 8.5)
 
 beepr::beep()
 ```
+
+```{r}
+sim %>% 
+  group_by(strat_name) %>% 
+  mutate(penalty = if_else(arrivals > 100, arrivals - 100, 0),
+         empty_rooms = if_else(arrivals <= 100, 100 - arrivals, 0)) %>% 
+  summarise(
+            
+            `Mean Penalty` = mean(penalty),
+            `Expected Empty Rooms` = mean(empty_rooms),
+            `Expected Arrivals` = mean(arrivals), 
+            `Std. Dev. Arrivals`  = sd(arrivals),
+            
+            ) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  clipr::write_clip()
+```
+
+
+
