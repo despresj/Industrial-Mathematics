@@ -4,7 +4,7 @@ This repo contains files associated with our hotel overbooking strategy. Find th
 
 
 # Figure 1 Relationship between estimated probability of arrival and optimum bookings.
-![](Industrial-Mathematics/R/figures/Figure1.png)
+![](R/figures/Figure1.png)
 
 # Figure 2 Overbooking strategy performance test.
-![](Industrial-Mathematics/R/figures/Figure2.png)
+![](R/figures/Figure2.png)
