@@ -57,7 +57,7 @@ points <- ggplot(data = sim)
 ```{r}
 stat_lines <- points + 
     geom_ribbon(data = sim_summary, aes(x = check_in_date, ymin = x_05, ymax = x_95), 
-                fill = "grey55", alpha = 0.25) + 
+                fill = "grey55", alpha = 0.75) + 
     geom_line(data = sim_summary, aes(x = check_in_date, y = mean), size = 0.5,
               color = "black") +
     geom_point(aes(x = check_in_date, y = arrivals, color = arrivals > 100), 
