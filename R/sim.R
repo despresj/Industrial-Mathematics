@@ -139,13 +139,39 @@ simulater <- function (x) {
     select_if(is.numeric)
 }
 
-map(1:2.5e3, simulater) %>%
+library(furrr)
+plan(multisession, workers = 6)
+tic()
+future_map(1:5, simulater) %>%
   # run simulation 2500 times
   # note this requires approximately
   # 18 hours of computer time
   bind_rows() %>% 
   select_if(is.numeric) %>%
   readr::write_csv(here::here("data", "sim_results_iterations_2.csv"))
+toc()
+
+plan(multisession, workers = 10)
+tic()
+future_map(1:5, simulater) %>%
+  # run simulation 2500 times
+  # note this requires approximately
+  # 18 hours of computer time
+  bind_rows() %>% 
+  select_if(is.numeric) %>%
+  readr::write_csv(here::here("data", "sim_results_iterations_2.csv"))
+toc()
+
+plan(multisession, workers = 25)
+tic()
+future_map(1:5, simulater) %>%
+  # run simulation 2500 times
+  # note this requires approximately
+  # 18 hours of computer time
+  bind_rows() %>% 
+  select_if(is.numeric) %>%
+  readr::write_csv(here::here("data", "sim_results_iterations_2.csv"))
+toc()
 
 
 # sim <- here::here("data", "sim_results_iterations.csv") %>% 
